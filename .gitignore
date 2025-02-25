@@ -1,2 +1,10 @@
 config.json
 bot_storage
+main copy.py
+tester.py
+train.py
+
+extracted_pages
+models
+ocr_results
+pdfs
