@@ -21,6 +21,10 @@ for directory in [BASE_DIR, USERS_DIR]:
     if not os.path.exists(directory):
         os.makedirs(directory)
 
+def log_user_action(user_id, username, action):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] User ID: {user_id}, Username: {username}, Action: {action}")
+
 def get_user_directories(user_id):
     user_base_dir = os.path.join(USERS_DIR, str(user_id))
     user_pdfs_dir = os.path.join(user_base_dir, "pdfs")
@@ -47,22 +51,33 @@ def enhance_image_for_ocr(image):
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_id = message.from_user.id
+    username = message.from_user.username or "Unknown"
+    log_user_action(user_id, username, "Started the bot")
+    
     get_user_directories(user_id)
     bot.reply_to(message, "שלום! שלח/י לי קובץ PDF ואחלץ ממנו את הטקסט.")
 
 @bot.message_handler(commands=['myid'])
 def get_user_id(message):
     user_id = message.from_user.id
+    username = message.from_user.username or "Unknown"
+    log_user_action(user_id, username, "Requested their ID")
+    
     bot.reply_to(message, f"Your Telegram ID is: {user_id}")
 
 @bot.message_handler(content_types=['document'])
 def handle_pdf(message):
     try:
+        user_id = message.from_user.id
+        username = message.from_user.username or "Unknown"
+        
         if message.document.mime_type != 'application/pdf':
+            log_user_action(user_id, username, f"Sent non-PDF file: {message.document.file_name}")
             bot.reply_to(message, "אנא שלח/י קובץ PDF.")
             return
         
-        user_id = message.from_user.id
+        log_user_action(user_id, username, f"Uploaded PDF: {message.document.file_name}")
+        
         user_pdfs_dir, user_output_dir, user_results_dir = get_user_directories(user_id)
         
         file_info = bot.get_file(message.document.file_id)
@@ -87,6 +102,9 @@ def handle_pdf(message):
         ask_language(message)
         
     except Exception as e:
+        user_id = message.from_user.id
+        username = message.from_user.username or "Unknown"
+        log_user_action(user_id, username, f"Error handling PDF: {str(e)}")
         bot.reply_to(message, f"אירעה שגיאה: {str(e)}")
 
 def ask_language(message):
@@ -99,6 +117,9 @@ def ask_language(message):
 def handle_language_selection(message):
     try:
         user_id = message.from_user.id
+        username = message.from_user.username or "Unknown"
+        log_user_action(user_id, username, f"Selected language: {message.text}")
+        
         if user_id not in processing_files:
             bot.reply_to(message, "אנא שלח/י קודם קובץ PDF.")
             return
@@ -109,6 +130,9 @@ def handle_language_selection(message):
         send_first_page_preview(message, user_id)
         
     except Exception as e:
+        user_id = message.from_user.id
+        username = message.from_user.username or "Unknown"
+        log_user_action(user_id, username, f"Error handling language selection: {str(e)}")
         bot.reply_to(message, f"אירעה שגיאה: {str(e)}")
 
 def send_first_page_preview(message, user_id):
@@ -125,6 +149,8 @@ def send_first_page_preview(message, user_id):
         )
         
         if not images:
+            username = message.from_user.username or "Unknown"
+            log_user_action(user_id, username, "Failed to extract preview from PDF")
             bot.reply_to(message, "לא ניתן לחלץ עמודים מה-PDF.")
             return
         
@@ -142,6 +168,8 @@ def send_first_page_preview(message, user_id):
         ask_rotation(message)
         
     except Exception as e:
+        username = message.from_user.username or "Unknown"
+        log_user_action(user_id, username, f"Error generating preview: {str(e)}")
         bot.reply_to(message, f"אירעה שגיאה בהכנת תצוגה מקדימה: {str(e)}")
 
 def ask_rotation(message):
@@ -158,6 +186,9 @@ def ask_rotation(message):
 def handle_rotation_selection(message):
     try:
         user_id = message.from_user.id
+        username = message.from_user.username or "Unknown"
+        log_user_action(user_id, username, f"Selected rotation: {message.text}")
+        
         if user_id not in processing_files:
             bot.reply_to(message, "אנא שלח/י קודם קובץ PDF.")
             return
@@ -181,10 +212,14 @@ def handle_rotation_selection(message):
         process_pdf_with_rotation(message, user_id, selected_angle)
         
     except Exception as e:
+        user_id = message.from_user.id
+        username = message.from_user.username or "Unknown"
+        log_user_action(user_id, username, f"Error handling rotation selection: {str(e)}")
         bot.reply_to(message, f"אירעה שגיאה: {str(e)}")
 
 def process_pdf_with_rotation(message, user_id, angle):
     try:
+        username = message.from_user.username or "Unknown"
         file_info = processing_files[user_id]
         pdf_path = file_info['pdf_path']
         output_dir = file_info['output_dir']
@@ -200,6 +235,8 @@ def process_pdf_with_rotation(message, user_id, angle):
         if not os.path.exists(pdf_results_dir):
             os.makedirs(pdf_results_dir)
         
+        log_user_action(user_id, username, f"Processing PDF: {file_info['original_name']} with angle {angle}°")
+        
         image_paths = pdf_to_images(pdf_path, pdf_output_dir)
         
         if image_paths:
@@ -209,11 +246,15 @@ def process_pdf_with_rotation(message, user_id, angle):
             with open(result_file_path, 'rb') as txt_file:
                 bot.send_document(message.chat.id, txt_file, caption=file_info['original_name'])
             
+            log_user_action(user_id, username, f"Completed processing PDF: {file_info['original_name']}")
             bot.send_message(message.chat.id, "עיבוד הקובץ הושלם!")
         else:
+            log_user_action(user_id, username, f"Failed to extract pages from PDF: {file_info['original_name']}")
             bot.reply_to(message, "לא הצלחתי לחלץ עמודים מהקובץ.")
         
     except Exception as e:
+        username = message.from_user.username or "Unknown"
+        log_user_action(user_id, username, f"Error processing PDF: {str(e)}")
         bot.reply_to(message, f"אירעה שגיאה בעיבוד הקובץ: {str(e)}")
 
 def pdf_to_images(pdf_path, output_dir):
@@ -276,4 +317,5 @@ def extract_text_with_rotation(image_paths, results_dir, pdf_name, language='heb
             combined_file.write(page_text)
 
 if __name__ == "__main__":
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Bot started")
     bot.polling(none_stop=True)
