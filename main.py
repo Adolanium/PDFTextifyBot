@@ -1,5 +1,5 @@
 import telebot
-from pdf2image import convert_from_path
+import fitz
 import pytesseract
 from PIL import Image
 import os
@@ -140,23 +140,17 @@ def send_first_page_preview(message, user_id):
     pdf_path = file_info['pdf_path']
     
     try:
-        images = convert_from_path(
-            pdf_path,
-            poppler_path=config.get('poppler_path'),
-            dpi=150,
-            first_page=1,
-            last_page=1
-        )
-        
-        if not images:
+        doc = fitz.open(pdf_path)
+        if doc.page_count == 0:
             username = message.from_user.username or "Unknown"
             log_user_action(user_id, username, "Failed to extract preview from PDF")
             bot.reply_to(message, "לא ניתן לחלץ עמודים מה-PDF.")
             return
         
-        first_page = images[0]
+        page = doc[0]
+        pix = page.get_pixmap(dpi=150)
         preview_path = os.path.join(file_info['output_dir'], "preview.jpg")
-        first_page.save(preview_path, "JPEG")
+        pix.save(preview_path)
         
         with open(preview_path, 'rb') as preview_file:
             bot.send_photo(
@@ -259,24 +253,13 @@ def process_pdf_with_rotation(message, user_id, angle):
 
 def pdf_to_images(pdf_path, output_dir):
     try:
-        info = convert_from_path(
-            pdf_path, 
-            poppler_path=config.get('poppler_path'),
-            first_page=1,
-            last_page=1
-        )
-        
-        images = convert_from_path(
-            pdf_path,
-            poppler_path=config.get('poppler_path'),
-            dpi=300,
-            fmt='png'
-        )
-        
+        doc = fitz.open(pdf_path)
         image_paths = []
-        for i, image in enumerate(images, 1):
+        
+        for i, page in enumerate(doc, 1):
+            pix = page.get_pixmap(dpi=300)
             path = os.path.join(output_dir, f'page_{i}.png')
-            image.save(path)
+            pix.save(path)
             image_paths.append(path)
         
         return image_paths
