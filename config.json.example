@@ -1,5 +1,6 @@
 {
     "token": "TELEGRAM_TOKEN",
     "tesseract_path": "C:\\Program Files\\Tesseract-OCR\\tesseract.exe",
-    "poppler_path": "C:\\Dev\\poppler-24.08.0\\Library\\bin"
+    "poppler_path": "C:\\Dev\\poppler-24.08.0\\Library\\bin",
+    "admin_id": 453260033
 }
