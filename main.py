@@ -9,6 +9,7 @@ from telebot import types
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import io
 import traceback
+import time
 
 try:
     with open('config.json') as config_file:
@@ -356,8 +357,12 @@ def process_pdf_parallel(message, user_id):
         log_user_action(user_id, username, "Cleaned up processing state.")
 
 if __name__ == "__main__":
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Bot starting polling...")
-    try:
-         bot.polling(none_stop=True, interval=0, timeout=20)
-    except Exception as e:
-         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Bot polling crashed: {e}")
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Bot starting...")
+    
+    while True:
+        try:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting polling...")
+            bot.polling(none_stop=True, interval=1, timeout=60)
+        except Exception as e:
+            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Bot polling error: {e}")
+            time.sleep(10)
