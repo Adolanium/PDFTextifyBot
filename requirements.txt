@@ -1,0 +1,4 @@
+pyTelegramBotAPI>=4.0
+PyMuPDF>=1.18.0
+pytesseract>=0.3.0
+Pillow>=7.0.0
